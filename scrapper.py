@@ -1,6 +1,7 @@
 import os
 import logging
 from datetime import datetime
+import base64
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -9,7 +10,8 @@ logger.setLevel(logging.DEBUG)
 USERNAME_INPUT_SELECTOR = "#username > input"  # ID + tag
 PASSWORD_INPUT_SELECTOR = "#password > input"  # ID + tag
 LOGGIN_BUTTON_SELECTOR = "#submitDataverify"  # ID
-NEED_CAPTCHA_SELECTOR = "#verificationImg"  # ID
+CAPTCHA_IMAGE_SELECTOR = "#verificationImg"  # ID
+CAPTCHA_INPUT_SELECTOR = "#verification input"
 
 # DATA SELECTORS
 NAME_CONTAINER_SELECTOR = ".nco-monitor-header-name-container .ant-typography"  # CSS
@@ -29,7 +31,7 @@ class FusionScrapper:
 
     async def start(self):
         # Verirficar se existe estado de navegador salvo
-        self.browser = await self.pw.chromium.launch(headless=True)
+        self.browser = await self.pw.chromium.launch(headless=False)
         self.context = await self.browser.new_context()
 
         try:
@@ -40,7 +42,10 @@ class FusionScrapper:
 
     async def check_login(self):
         # Aguarda a validação do login
+        
         try:
+            #await self.page.screenshot(path="debug.png", full_page=True)
+
             await self.page.wait_for_selector(
                 'span[title="%s"]' % os.getenv("FUSIONSOLAR_USERNAME")
             )
@@ -71,6 +76,27 @@ class FusionScrapper:
         # vai para a página de login
         await self.page.goto(os.getenv("LOGIN_PAGE_URL"))
 
+
+        #verifica campo de captcha
+        try:
+            captcha_element = await self.page.wait_for_selector(CAPTCHA_IMAGE_SELECTOR)
+            await self.resolve_captcha(captcha_element) 
+        except Exception:
+            await self.make_login()
+            await self.check_login()
+
+        logging.info("Logado com sucesso")
+
+        # vai para a página de monitoramento
+        await self.page.goto(os.getenv("MONITOR_PAGE_URL"))
+
+        # Salva o estado do navegador
+        await self.page.context.storage_state(path="browser_state.json")
+
+        return 
+
+    async def make_login(self):       
+
         # aguarda os campos do formulário
         username_input_element = await self.page.wait_for_selector(
             USERNAME_INPUT_SELECTOR
@@ -80,21 +106,37 @@ class FusionScrapper:
         )
         login_button_element = await self.page.wait_for_selector(LOGGIN_BUTTON_SELECTOR)
 
-        # Preenche os campos e loga
+        # Preenche os campos
         await username_input_element.fill(os.getenv("FUSIONSOLAR_USERNAME"))
         await password_input_element.fill(os.getenv("FUSIONSOLAR_PASSWORD"))
+
         await login_button_element.click()
 
-        # Aguarda a validação do login
-        await self.check_login()
+    async def resolve_captcha(self, captcha_element):
+        while True:
+            try:
+                img_src = await captcha_element.get_attribute("src")
 
-        logging.info("Logado com sucesso")
+                if img_src.startswith("data:image"):
+                    base64_data = img_src.split(",")[1]
+                    with open("captcha.png", "wb") as f:
+                        f.write(base64.b64decode(base64_data))
+                    logger.info("Imagem captch salva com sucesso")
 
-        # vai para a página de monitoramento
-        await self.page.goto(os.getenv("MONITOR_PAGE_URL"))
+                    code = input("Digite o codigo captch: ")
+                await self.page.locator(CAPTCHA_INPUT_SELECTOR).press_sequentially(code)
+                await self.page.make_login()
 
-        # Salva o estado do navegador
-        await self.page.context.storage_state(path="browser_state.json")
+            except Exception as e:
+                raise e
+
+            # verifica se o captcha foi resolvido
+            try: 
+                self.check_login()
+                break
+            except Exception:
+                continue
+        return 
 
     async def scrap(self):
         data = {
