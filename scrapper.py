@@ -29,9 +29,8 @@ class FusionScrapper:
 
     async def start(self):
         # Verirficar se existe estado de navegador salvo
-        self.browser = await self.pw.chromium.launch(headless=False)
+        self.browser = await self.pw.chromium.launch(headless=True)
         self.context = await self.browser.new_context()
-        self.page = await self.context.new_page()
 
         try:
             await self.inject_context_scenario()
@@ -65,6 +64,9 @@ class FusionScrapper:
 
     async def create_context_scenario(self):
         logging.debug("create_context_scenario")
+
+        self.context = await self.browser.new_context()
+        self.page = await self.context.new_page()
 
         # vai para a página de login
         await self.page.goto(os.getenv("LOGIN_PAGE_URL"))
