@@ -40,6 +40,8 @@ CAPACIDADE_TOTAL_SELECTOR = 'div.nco-monitor-station-detail-content:has(div.nco-
 
 DATA_CONEXAO_SELECTOR = 'div.nco-monitor-station-detail-content:has(div.nco-monitor-station-detail-label-container span:has-text("Data da conexão à rede")) div.nco-monitor-station-detail-value-container span'
 
+SOCIAL_VALUES_SELECTOR='div.nco-monitor-social-contribution-inner div.nco-counter-value .counter-value-main-value .value span'
+
 
 class FusionScrapper:
     def __init__(self, pw):
@@ -171,8 +173,11 @@ class FusionScrapper:
             "potencia_reativa_saida": await self.get_potencia_reativa_saida(),
             "rendimento_hoje": await self.get_rendimento_hoje(),
             "rendimento_total": await self.get_rendimento_total(),
-            
         }
+        
+        social_data = await self.get_social_data()
+        data.update(social_data)
+        
         return data
 
     async def get_nome_usina(self):
@@ -299,3 +304,24 @@ class FusionScrapper:
                 "Nao consegui encontrar a data de conexão",
             )
             raise e
+
+    async def get_social_data(self):
+        contributions = {}
+        # Seleciona cada container individual de contribuição
+        containers = self.page.locator("div.nco-monitor-social-contribution-inner div.nco-counter-value")
+        count = await containers.count()
+        # Mapeamento entre os títulos apresentados na página e suas chaves personalizadas
+        mapping = {
+            "Carvão padrão poupado": "carvao_poupado",
+            "CO₂ evitado": "co2_evitado",
+            "Árvores equivalentes plantadas": "arvores_plantadas"
+        }
+        for i in range(count):
+            container = containers.nth(i)
+            title = (await container.locator(".counter-value-main-title").text_content()).strip()
+            value = (await container.locator(".counter-value-main-value .value span").text_content()).strip()
+            # Se o título estiver no mapeamento, salva com a chave definida
+            if title in mapping:
+                contributions[mapping[title]] = value
+        return contributions
+        
