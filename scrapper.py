@@ -177,6 +177,9 @@ class FusionScrapper:
         
         social_data = await self.get_social_data()
         data.update(social_data)
+
+        data["alarmes"] = await self.get_alarms_data()
+
         
         return data
 
@@ -324,4 +327,30 @@ class FusionScrapper:
             if title in mapping:
                 contributions[mapping[title]] = value
         return contributions
+    
+    async def get_alarms_data(self):
+        """Extrai os alarmes e os mapeia para chaves personalizadas."""
+        alarms = {}
+        # Dicionário de mapeamento: mapeia o título do alarme para a chave que você deseja usar
+        mapping = {
+            "Sério": "serio",
+            "Importante": "importante",
+            "Secundário": "secundario",
+            "Advert.": "advertencia"
+        }
         
+        # Seleciona todos os containers de alarme
+        alarm_containers = self.page.locator("div.alarm-container")
+        count = await alarm_containers.count()
+        
+        for i in range(count):
+            container = alarm_containers.nth(i)
+            # O primeiro span dentro de .alarm-info contém o tipo (título) do alarme
+            tipo = (await container.locator("div.alarm-info span:nth-of-type(1)").text_content()).strip()
+            # O span com a classe alarm-info-value contém o valor
+            valor = (await container.locator("div.alarm-info span.alarm-info-value").text_content()).strip()
+            # Usa o mapping para definir a chave ou mantém o próprio tipo se não existir no mapping
+            chave = mapping.get(tipo, tipo)
+            alarms[chave] = valor
+        
+        return alarms
