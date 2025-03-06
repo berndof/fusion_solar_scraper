@@ -12,3 +12,4 @@ wheels/
 browser_state.json
 future/
 browsers/
+log.*
