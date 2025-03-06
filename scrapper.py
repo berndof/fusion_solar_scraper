@@ -34,6 +34,13 @@ RENDIMENTO_TOTAL_FATHER_SELECTOR = "span.name:text('Rendimento total')"
 RENDIMENTO_TOTAL_CHILD_SELECTOR = ".nco-monitor-kpi-item"
 RENDIMENTO_TOTAL_VALUE_ATTR = ".value"
 
+ENDERECO_SELECTOR = 'div.nco-monitor-station-detail-content:has(div.nco-monitor-station-detail-label-container span:has-text("Endereço da instalação")) div.nco-monitor-station-detail-value-container span'
+
+CAPACIDADE_TOTAL_SELECTOR = 'div.nco-monitor-station-detail-content:has(div.nco-monitor-station-detail-label-container span:has-text("Capacidade total da string")) div.nco-monitor-station-detail-value-container span'
+
+DATA_CONEXAO_SELECTOR = 'div.nco-monitor-station-detail-content:has(div.nco-monitor-station-detail-label-container span:has-text("Data da conexão à rede")) div.nco-monitor-station-detail-value-container span'
+
+
 class FusionScrapper:
     def __init__(self, pw):
         self.pw = pw
@@ -156,11 +163,15 @@ class FusionScrapper:
     async def scrap(self):
         data = {
             "nome_usina": await self.get_nome_usina(),
+            "endereco": await self.get_endereco(),
+            "capacidade_total": await self.get_capacidade_total(),
+            "data_conexão": await self.get_data_conexao(),
             "data_da_coleta": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
             "potencia_ativa": await self.get_potencia_ativa(),
             "potencia_reativa_saida": await self.get_potencia_reativa_saida(),
             "rendimento_hoje": await self.get_rendimento_hoje(),
             "rendimento_total": await self.get_rendimento_total(),
+            
         }
         return data
 
@@ -210,6 +221,7 @@ class FusionScrapper:
             raise e
 
     async def get_rendimento_hoje(self):
+        
         try:  # Procura o elemento da potencia ativa
             father_element = await self.page.wait_for_selector(
                 RENDIMENTO_HOJE_FATHER_SELECTOR
@@ -243,5 +255,47 @@ class FusionScrapper:
             logger.exception(e)
             logger.warning(
                 "Nao consegui encontrar o valor da potencia ativa",
+            )
+            raise e
+
+    async def get_endereco(self):
+        try:  # Procura o elemento da potencia ativa
+            element = await self.page.wait_for_selector(
+                ENDERECO_SELECTOR
+            )
+            value = await element.inner_text()
+            return value
+        except Exception as e:
+            logger.exception(e)
+            logger.warning(
+                "Nao consegui encontrar o endereço da usina",
+            )
+            raise e
+
+    async def get_capacidade_total(self):
+        try:  # Procura o elemento da potencia ativa
+            element = await self.page.wait_for_selector(
+                CAPACIDADE_TOTAL_SELECTOR
+            )
+            value = await element.inner_text()
+            return value
+        except Exception as e:
+            logger.exception(e)
+            logger.warning(
+                "Nao consegui encontrar o endereço da usina",
+            )
+            raise e
+
+    async def get_data_conexao(self):
+        try:  # Procura o elemento da potencia ativa
+            element = await self.page.wait_for_selector(
+                DATA_CONEXAO_SELECTOR
+            )
+            value = await element.inner_text()
+            return value
+        except Exception as e:
+            logger.exception(e)
+            logger.warning(
+                "Nao consegui encontrar a data de conexão",
             )
             raise e
