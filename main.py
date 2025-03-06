@@ -1,31 +1,38 @@
 from playwright.async_api import async_playwright
 from scrapper import FusionScrapper
-from dotenv import load_dotenv
 import asyncio
-import logging
 import json
 import os
 import subprocess
+import logging
+from pathlib import Path
 
-logging.basicConfig(level=logging.DEBUG)
 
-logger = logging.getLogger(__name__)
-
-load_dotenv()
-
+#TEMPORARIO
+logging.basicConfig(
+    level=logging.DEBUG,  # Nível de log
+    format='%(asctime)s - %(levelname)s - %(message)s',  # Formato da mensagem
+    handlers=[
+        logging.FileHandler(Path.cwd() / "log.txt"),  # Salva em um arquivo
+        logging.StreamHandler()  # Exibe no terminal
+    ]
+)
+logger = logging.getLogger("MAIN")
 
 async def main():
+    
     async with async_playwright() as pw:
-        scrapper = FusionScrapper(pw)
+        scrapper = FusionScrapper(pw)    
+
         try:
             await scrapper.start()
             data = await scrapper.scrap()
             await send_data_to_zabbix(data)
+            
         except Exception as e:
             logger.exception(e)
         # finally:
-        # await scrapper.stop()
-
+        # await scrapper.stop()    
 
 async def send_data_to_zabbix(data):
     json_payload = json.dumps(data)
@@ -39,7 +46,7 @@ async def send_data_to_zabbix(data):
         "-p", os.getenv("ZABBIX_PORT"),
         "-o", f"'{json_payload}"
     ]
-    logging.debug(cmd)
+    logger.debug(cmd)
 
     result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -51,4 +58,5 @@ async def send_data_to_zabbix(data):
     logger.info("Dados enviados com sucesso")
 
 if __name__ == "__main__":
+    logger.debug("Hello")
     asyncio.run(main())

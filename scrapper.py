@@ -1,10 +1,10 @@
 import os
-import logging
 from datetime import datetime
 import base64
+import logging 
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger = logging.getLogger("SCRAPER")
+
 
 # LOGIN SELECTORS
 USERNAME_INPUT_SELECTOR = "#username > input"  # ID + tag
@@ -30,50 +30,53 @@ class FusionScrapper:
         self.page = None
 
     async def start(self):
-        # Verirficar se existe estado de navegador salvo
-        self.browser = await self.pw.chromium.launch(headless=False)
+        #inicia um navegador com o contexto limpo
+        logger.debug("Launching browser...")
+        self.browser = await self.pw.chromium.launch(headless=True)
         self.context = await self.browser.new_context()
 
-        try:
+        try: #tenta injetar o estado do navegador salvo no ultimo login
             await self.inject_context_scenario()
+
         except Exception as e:
             await self.create_context_scenario()
             logger.exception(f" exceção !!!! {e}")
 
     async def check_login(self):
-        # Aguarda a validação do login
-        
-        try:
+        """Verifica se o login foi realizado
+        """
+        try: #tenta achar o nome do usuário na página
             #await self.page.screenshot(path="debug.png", full_page=True)
-
             await self.page.wait_for_selector(
                 'span[title="%s"]' % os.getenv("FUSIONSOLAR_USERNAME")
             )
+            logger.info("Logado no sistema")
         except Exception as e:
             logger.exception(f"Erro ao aguardar o elemento de validacao do login {e}")
             raise e
 
     async def inject_context_scenario(self):
-        # injeta o estado
-        logging.debug("inject_context_scenario")
+
+        #encerra e recria o contexto 
         await self.context.close()
         self.context = await self.browser.new_context(
             storage_state="browser_state.json"
         )
-        self.page = await self.context.new_page()
+        logger.debug("Contexto injetado com sucesso")
 
-        # vai para a página de monitoramento
+        #cria nova página e navega para a página de monitoramento
+        self.page = await self.context.new_page()
         await self.page.goto(os.getenv("MONITOR_PAGE_URL"))
 
         await self.check_login()
+        logger.debug("Valid context")
 
     async def create_context_scenario(self):
-        logging.debug("create_context_scenario")
+        logger.debug("Creating new context")
 
+        #inicia um novo contexto e vai para a página de login
         self.context = await self.browser.new_context()
         self.page = await self.context.new_page()
-
-        # vai para a página de login
         await self.page.goto(os.getenv("LOGIN_PAGE_URL"))
 
 
@@ -85,14 +88,12 @@ class FusionScrapper:
             await self.make_login()
             await self.check_login()
 
-        logging.info("Logado com sucesso")
-
         # vai para a página de monitoramento
         await self.page.goto(os.getenv("MONITOR_PAGE_URL"))
-
         # Salva o estado do navegador
         await self.page.context.storage_state(path="browser_state.json")
-
+        logger.debug("Contexto criado com sucesso")
+        
         return 
 
     async def make_login(self):       
@@ -111,6 +112,8 @@ class FusionScrapper:
         await password_input_element.fill(os.getenv("FUSIONSOLAR_PASSWORD"))
 
         await login_button_element.click()
+
+        logger.info("Login form filled with success")
 
     async def resolve_captcha(self, captcha_element):
         while True:
