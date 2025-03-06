@@ -5,19 +5,20 @@ import json
 import os
 import subprocess
 import logging
-from pathlib import Path
+from logging.handlers import RotatingFileHandler
 
 
 #TEMPORARIO
 logging.basicConfig(
-    level=logging.DEBUG,  # Nível de log
+    level=logging.WARNING,  # Nível de log padrão
     format='%(asctime)s - %(levelname)s - %(message)s',  # Formato da mensagem
     handlers=[
-        logging.FileHandler(Path.cwd() / "log.txt"),  # Salva em um arquivo
+        RotatingFileHandler(os.getenv("LOG_FILE_PATH"),maxBytes=int((os.getenv("MAX_LOG_SIZE_MB") * 1024 )), backupCount=3),
         logging.StreamHandler()  # Exibe no terminal
     ]
 )
 logger = logging.getLogger("MAIN")
+logger.setLevel(logging.DEBUG)
 
 async def main():
     

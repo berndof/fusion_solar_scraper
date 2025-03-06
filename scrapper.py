@@ -4,6 +4,7 @@ import base64
 import logging 
 
 logger = logging.getLogger("SCRAPER")
+logger.setLevel(logging.DEBUG)
 
 
 # LOGIN SELECTORS
@@ -21,6 +22,17 @@ POTENCIA_ATIVA_FATHER_SELECTOR = "span.name:text('Potência ativa')"
 POTENCIA_ATIVA_CHILD_SELECTOR = ".nco-monitor-kpi-item"
 POTENCIA_ATIVA_VALUE_ATTR = ".value"
 
+POTENCIA_REATIVA_FATHER_SELECTOR = "span.name:text('Potência reativa de saída')"
+POTENCIA_REATIVA_CHILD_SELECTOR = ".nco-monitor-kpi-item"
+POTENCIA_REATIVA_VALUE_ATTR = ".value"
+
+RENDIMENTO_HOJE_FATHER_SELECTOR = "span.name:text('Rendimento hoje')"
+RENDIMENTO_HOJE_CHILD_SELECTOR = ".nco-monitor-kpi-item"
+RENDIMENTO_HOJE_VALUE_ATTR = ".value"
+
+RENDIMENTO_TOTAL_FATHER_SELECTOR = "span.name:text('Rendimento total')"
+RENDIMENTO_TOTAL_CHILD_SELECTOR = ".nco-monitor-kpi-item"
+RENDIMENTO_TOTAL_VALUE_ATTR = ".value"
 
 class FusionScrapper:
     def __init__(self, pw):
@@ -146,6 +158,9 @@ class FusionScrapper:
             "nome_usina": await self.get_nome_usina(),
             "data_da_coleta": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
             "potencia_ativa": await self.get_potencia_ativa(),
+            "potencia_reativa_saida": await self.get_potencia_reativa_saida(),
+            "rendimento_hoje": await self.get_rendimento_hoje(),
+            "rendimento_total": await self.get_rendimento_total(),
         }
         return data
 
@@ -165,8 +180,65 @@ class FusionScrapper:
             child = await father_element.evaluate_handle(
                 f"el => el.closest('{POTENCIA_ATIVA_CHILD_SELECTOR}')"
             )
-            value = await child.query_selector(POTENCIA_ATIVA_VALUE_ATTR)
-            return await value.inner_text()
+            value_element = await child.query_selector(POTENCIA_ATIVA_VALUE_ATTR)
+            value = await value_element.inner_text()
+            return "%s kW" %value
+        except Exception as e:
+            logger.exception(e)
+            logger.warning(
+                "Nao consegui encontrar o valor da potencia ativa",
+            )
+            raise e
+
+    async def get_potencia_reativa_saida(self):
+        try:  # Procura o elemento da potencia ativa
+            father_element = await self.page.wait_for_selector(
+                POTENCIA_REATIVA_FATHER_SELECTOR
+            )
+
+            child = await father_element.evaluate_handle(
+                f"el => el.closest('{POTENCIA_REATIVA_CHILD_SELECTOR}')"
+            )
+            value_element = await child.query_selector(POTENCIA_REATIVA_VALUE_ATTR)
+            value = await value_element.inner_text()
+            return "%s kvar" %value
+        except Exception as e:
+            logger.exception(e)
+            logger.warning(
+                "Nao consegui encontrar o valor da potencia ativa",
+            )
+            raise e
+
+    async def get_rendimento_hoje(self):
+        try:  # Procura o elemento da potencia ativa
+            father_element = await self.page.wait_for_selector(
+                RENDIMENTO_HOJE_FATHER_SELECTOR
+            )
+
+            child = await father_element.evaluate_handle(
+                f"el => el.closest('{RENDIMENTO_HOJE_CHILD_SELECTOR}')"
+            )
+            value_element = await child.query_selector(RENDIMENTO_HOJE_VALUE_ATTR)
+            value = await value_element.inner_text()
+            return "%s MWh" %value
+        except Exception as e:
+            logger.exception(e)
+            logger.warning(
+                "Nao consegui encontrar o valor da potencia ativa",
+            )
+            raise e
+    async def get_rendimento_total(self):
+        try:  # Procura o elemento da potencia ativa
+            father_element = await self.page.wait_for_selector(
+                RENDIMENTO_TOTAL_FATHER_SELECTOR
+            )
+
+            child = await father_element.evaluate_handle(
+                f"el => el.closest('{RENDIMENTO_TOTAL_CHILD_SELECTOR}')"
+            )
+            value_element = await child.query_selector(RENDIMENTO_TOTAL_VALUE_ATTR)
+            value = await value_element.inner_text()
+            return "%s MWh" %value
         except Exception as e:
             logger.exception(e)
             logger.warning(
