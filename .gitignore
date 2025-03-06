@@ -10,3 +10,5 @@ wheels/
 # Virtual environments
 .venv
 browser_state.json
+future/
+browsers/
