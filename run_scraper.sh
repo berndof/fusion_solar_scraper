@@ -1,3 +1,7 @@
+#!/bin/bash
+
+WORKDIR=$(dirname "$0")
+
 MAX_LOG_SIZE=1048576  # 1MB em bytes
 
 # Verifica se o log existe e seu tamanho
