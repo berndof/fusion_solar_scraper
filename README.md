@@ -1,6 +1,7 @@
 ## Como rodar o scraper
 
-
+## Instalar o uv package manager 
+https://docs.astral.sh/uv/getting-started/installation/
 
 
 ```bash

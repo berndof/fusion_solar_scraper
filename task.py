@@ -13,7 +13,7 @@ def create_task():
 
     cron = CronTab(user=True)
     job = cron.new(
-        command='uv run --env-file %s main.py' % os.path.join(Path.cwd(), '.env'),
+        command=f'/bin/bash {Path.cwd()}/run_scraper.sh',
         comment='fusion_solar_scrapper'
     )
     job.minute.every(cron_interval)

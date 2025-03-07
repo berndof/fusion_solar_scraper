@@ -7,8 +7,6 @@ import subprocess
 import logging
 from logging.handlers import RotatingFileHandler
 
-
-#TEMPORARIO
 logging.basicConfig(
     level=logging.WARNING,  # Nível de log padrão
     format='%(asctime)s - %(levelname)s - %(message)s',  # Formato da mensagem
