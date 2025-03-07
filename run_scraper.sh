@@ -20,6 +20,6 @@ cd "$WORKDIR" || { echo "Erro ao entrar no diretório" >> "$LOGFILE"; exit 1; }
 
 # Ativa o ambiente virtual
 source "$WORKDIR/.venv/bin/activate"
-python -m uv run --env-file "$WORKDIR/.env" main.py"
+python -m uv run --env-file "$WORKDIR/.env" main.py
 
 echo "Finalizado em $(date)" >> "$LOGFILE"
