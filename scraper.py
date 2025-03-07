@@ -53,7 +53,7 @@ class Scraper:
     async def start(self):
         #inicia um navegador com o contexto limpo
         logger.debug("Launching browser...")
-        self.browser = await self.pw.chromium.launch(headless=False)
+        self.browser = await self.pw.chromium.launch(headless=True)
         self.context = await self.browser.new_context()
 
         #tenta o cenário de injeção de cokies
