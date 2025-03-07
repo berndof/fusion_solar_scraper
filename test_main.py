@@ -1,19 +1,12 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import asyncio
 import logging
-from pathlib import Path
-from main import main, send_data_to_zabbix
+from main import main
 
-logging.basicConfig(
-    level=logging.DEBUG,  # Nível de log
-    format='%(asctime)s - %(levelname)s - %(message)s',  # Formato da mensagem
-    handlers=[
-        logging.FileHandler(Path.cwd() / "log.txt"),  # Salva em um arquivo
-        logging.StreamHandler()  # Exibe no terminal
-    ]
-)
 logger = logging.getLogger("TESTE")
+logger.setLevel(logging.DEBUG)
+
 
 
 class TestMain(unittest.TestCase):

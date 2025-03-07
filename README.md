@@ -1,21 +1,39 @@
+## Como rodar o scraper
+
+
+
+
+```bash
 sudo apt install make
+```
 
+## Comando install
+O comando install é responsável por instalar as dependências necessárias para o projeto. Ele executa as seguintes ações:
 
+Instala as dependências do projeto usando o comando uv sync.
+Instala o Playwright e o Chromium headless usando o comando playwright install --with-deps --only-shell chromium.
+Ordem de uso: O comando install deve ser executado primeiro para garantir que todas as dependências necessárias estejam instaladas.
 
-run 
-uv sync
-uv run --env-file .env playwright install --with-deps --only-shell chromium
+## Comando task
+O comando task é responsável por criar um cron job para executar o projeto. Ele executa as seguintes ações:
 
-## service 
-sudo nano /etc/systemd/system/huawei-scraper.service
-└─[$] <git:(main*)> sudo systemctl daemon-reload
+Cria um cron job usando o comando task --create.
 
-Restart=always → Garante que o serviço sempre reinicia quando termina.
-🔹 RestartSec=300 → Espera 5 minutos antes de reiniciar.
-🔹 RuntimeMaxSec=290 → Mata o processo se ele rodar por mais de 4 minutos e 50 segundos (para evitar sobreposição).
+O comando task é opcional e pode ser executado após o comando install. 
+Se você não precisar de um cron job, pode pular este comando.
 
+## Comando test
+O comando test é responsável por executar os testes do projeto. Ele executa as seguintes ações:
 
-https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html#id-1.7
-https://www.freedesktop.org/software/systemd/man/latest/systemd.time.html
+Executa os testes do projeto usando o comando uv run --env-file ${ENV_FILE} test_main.py.
 
- sudo cp fusion_scrapper.service /etc/systemd/system/fusion_scrapper.service && sudo systemctl daemon-reload && sudo systemctl start fusion_scrapper.service
+O comando test pode ser executado após o comando install e task (se aplicável).
+
+## Comando clean
+O comando clean é responsável por limpar o projeto. Ele executa as seguintes ações:
+
+Desinstala o Playwright e o Chromium headless usando o comando playwright uninstall all.
+Limpa o projeto usando o comando task --clean.
+
+O comando clean pode ser executado a qualquer momento para limpar o projeto.
+

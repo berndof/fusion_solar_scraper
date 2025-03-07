@@ -60,4 +60,13 @@ async def send_data_to_zabbix(data):
 
 if __name__ == "__main__":
     logger.debug("Hello")
-    asyncio.run(main())
+    
+    cron_interval = int(os.getenv("CRON_INTERVAL_MINUTES", 5))
+    # Define o timeout como (intervalo em segundos - margem de 10 segundos)
+    timeout_value = (cron_interval * 60) - 10
+
+    try:
+        asyncio.run(asyncio.wait_for(main(), timeout=timeout_value))
+    except asyncio.TimeoutError:
+        logging.error("Tempo máximo de execução excedido. Script finalizado para evitar sobreposição.")
+
