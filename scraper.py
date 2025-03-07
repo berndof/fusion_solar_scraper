@@ -1,22 +1,21 @@
+import logging
 import os
-from datetime import datetime
 import base64
-import logging 
-from pathlib import Path
+import sys
+import re
 
+from pathlib import Path
+from datetime import datetime
+from exceptions import CANT_VALIDATE_LOGIN_EXCEPTION
 
 logger = logging.getLogger("SCRAPER")
 logger.setLevel(logging.DEBUG)
 
-
-# LOGIN SELECTORS
-USERNAME_INPUT_SELECTOR = "#username > input"  # ID + tag
-PASSWORD_INPUT_SELECTOR = "#password > input"  # ID + tag
-LOGGIN_BUTTON_SELECTOR = "#submitDataverify"  # ID
-CAPTCHA_IMAGE_SELECTOR = "#verificationImg"  # ID
+USERNAME_INPUT_SELECTOR = "#username > input"
+PASSWORD_INPUT_SELECTOR = "#password > input"
+LOGGIN_BUTTON_SELECTOR = "#submitDataverify"
+CAPTCHA_IMAGE_SELECTOR = "#verificationImg"
 CAPTCHA_INPUT_SELECTOR = "#verification input"
-
-# DATA SELECTORS
 NAME_CONTAINER_SELECTOR = ".nco-monitor-header-name-container .ant-typography"  # CSS
 NAME_ATTR = "title"
 
@@ -44,8 +43,7 @@ DATA_CONEXAO_SELECTOR = 'div.nco-monitor-station-detail-content:has(div.nco-moni
 
 SOCIAL_VALUES_SELECTOR='div.nco-monitor-social-contribution-inner div.nco-counter-value .counter-value-main-value .value span'
 
-
-class FusionScrapper:
+class Scraper:
     def __init__(self, pw):
         self.pw = pw
         self.browser = None
@@ -55,10 +53,11 @@ class FusionScrapper:
     async def start(self):
         #inicia um navegador com o contexto limpo
         logger.debug("Launching browser...")
-        self.browser = await self.pw.chromium.launch(headless=True)
+        self.browser = await self.pw.chromium.launch(headless=False)
         self.context = await self.browser.new_context()
 
-        try: #tenta injetar o estado do navegador salvo no ultimo login
+        #tenta o cenário de injeção de cokies
+        try:
             await self.inject_context_scenario()
 
         except FileNotFoundError:
@@ -67,18 +66,20 @@ class FusionScrapper:
         except Exception as e:
             logger.exception(f" exceção nova !!!! {e}")
 
-    async def check_login(self):
-        """Verifica se o login foi realizado
-        """
+        return 
+
+    async def validate_login(self):
         try: #tenta achar o nome do usuário na página
-            #await self.page.screenshot(path="debug.png", full_page=True)
+            if os.getenv("SCREENSHOT_DEBUG") == "true":
+                await self.page.screenshot(path="screenshots/debug_login.png", full_page=True)
+                
             await self.page.wait_for_selector(
-                'span[title="%s"]' % os.getenv("FUSIONSOLAR_USERNAME")
+                'span[title="%s"]' % os.getenv("FUSIONSOLAR_USERNAME"), timeout=30000
             )
             logger.info("Logado no sistema")
         except Exception as e:
-            logger.exception(f"Erro ao aguardar o elemento de validacao do login {e}")
-            raise e
+            logging.exception(e)
+            raise CANT_VALIDATE_LOGIN_EXCEPTION
 
     async def inject_context_scenario(self):
 
@@ -92,8 +93,8 @@ class FusionScrapper:
         #cria nova página e navega para a página de monitoramento
         self.page = await self.context.new_page()
         await self.page.goto(os.getenv("MONITOR_PAGE_URL"))
-
-        await self.check_login()
+        
+        await self.validate_login()
         logger.debug("Valid context")
 
     async def create_context_scenario(self):
@@ -104,24 +105,21 @@ class FusionScrapper:
         self.page = await self.context.new_page()
         await self.page.goto(os.getenv("LOGIN_PAGE_URL"))
 
-
-        #verifica campo de captcha
         try:
-            captcha_element = await self.page.wait_for_selector(CAPTCHA_IMAGE_SELECTOR)
-            await self.resolve_captcha(captcha_element) 
+            await self.do_login()
         except Exception:
-            await self.make_login()
-            await self.check_login()
+            captcha_element = await self.page.wait_for_selector(CAPTCHA_IMAGE_SELECTOR)
+            if captcha_element: 
+                await self.resolve_captcha(captcha_element) 
 
-        # vai para a página de monitoramento
+        await self.validate_login()
         await self.page.goto(os.getenv("MONITOR_PAGE_URL"))
+
         # Salva o estado do navegador
         await self.page.context.storage_state(path=os.path.join(Path.cwd(), "browser_state.json"))
         logger.debug("Contexto criado com sucesso")
-        
-        return 
 
-    async def make_login(self):       
+    async def do_login(self):       
 
         # aguarda os campos do formulário
         username_input_element = await self.page.wait_for_selector(
@@ -140,6 +138,10 @@ class FusionScrapper:
 
         logger.info("Login form filled with success")
 
+        await self.validate_login()
+
+        return
+
     async def resolve_captcha(self, captcha_element):
         while True:
             try:
@@ -153,7 +155,7 @@ class FusionScrapper:
 
                     code = input("Digite o codigo captch: ")
                 await self.page.locator(CAPTCHA_INPUT_SELECTOR).press_sequentially(code)
-                await self.page.make_login()
+                await self.page.do_login()
 
             except Exception as e:
                 raise e
@@ -166,128 +168,47 @@ class FusionScrapper:
                 continue
         return 
 
+    async def stop(self):
+        await self.context.close()
+        await self.browser.close()
+        sys.exit(1)
+
     async def scrap(self):
-        data = {
-            "nome_usina": await self.get_nome_usina(),
-            "endereco": await self.get_endereco(),
-            "capacidade_total": await self.get_capacidade_total(),
-            "data_conexão": await self.get_data_conexao(),
-            "data_da_coleta": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
-            "potencia_ativa": await self.get_potencia_ativa(),
-            "potencia_reativa_saida": await self.get_potencia_reativa_saida(),
-            "rendimento_hoje": await self.get_rendimento_hoje(),
-            "rendimento_total": await self.get_rendimento_total(),
-        }
-        
-        social_data = await self.get_social_data()
-        data.update(social_data)
+        try:
+            data = {
+                #"nome_usina": await self.get_nome_usina(), #
+                #"endereco": await self.get_endereco(), #
+                #"data_conexao": await self.get_data_conexao(), #
+                #"capacidade_total": clean_value(await self.get_capacidade_total()), #
+                "data_da_coleta": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), #
+                "potencia_ativa": clean_value(await self.get_potencia_ativa()), #
+                "potencia_reativa_saida": clean_value(await self.get_potencia_reativa_saida()), #
+                "rendimento_hoje": clean_value(await self.get_rendimento_hoje()),
+                "rendimento_total": clean_value(await self.get_rendimento_total()),
+            }
 
-        #data["alarmes"] = await self.get_alarms_data()
+            social_data = await self.get_social_data()
+            for key, value in social_data.items():
+                data[key] = clean_value(value)
 
-        
-        return data
+            alarm_data = await self.get_alarms_data()
+            for key, value in alarm_data.items():
+                data[f"alarme_{key}"] = int(value)
+
+            logger.info("SCRAPED DATA = %s", data)
+            return data
+
+        except Exception as e:
+            raise e
 
     async def get_nome_usina(self):
-        try:
-            name_container = await self.page.wait_for_selector(NAME_CONTAINER_SELECTOR)
-            return await name_container.get_attribute(NAME_ATTR)
-        except Exception as e:
-            raise e
-
-    async def get_potencia_ativa(self):
-        try:  # Procura o elemento da potencia ativa
-            father_element = await self.page.wait_for_selector(
-                POTENCIA_ATIVA_FATHER_SELECTOR
-            )
-
-            child = await father_element.evaluate_handle(
-                f"el => el.closest('{POTENCIA_ATIVA_CHILD_SELECTOR}')"
-            )
-            value_element = await child.query_selector(POTENCIA_ATIVA_VALUE_ATTR)
-            value = await value_element.inner_text()
-            return "%s kW" %value
-        except Exception as e:
-            logger.exception(e)
-            logger.warning(
-                "Nao consegui encontrar o valor da potencia ativa",
-            )
-            raise e
-
-    async def get_potencia_reativa_saida(self):
-        try:  # Procura o elemento da potencia ativa
-            father_element = await self.page.wait_for_selector(
-                POTENCIA_REATIVA_FATHER_SELECTOR
-            )
-
-            child = await father_element.evaluate_handle(
-                f"el => el.closest('{POTENCIA_REATIVA_CHILD_SELECTOR}')"
-            )
-            value_element = await child.query_selector(POTENCIA_REATIVA_VALUE_ATTR)
-            value = await value_element.inner_text()
-            return "%s kvar" %value
-        except Exception as e:
-            logger.exception(e)
-            logger.warning(
-                "Nao consegui encontrar o valor da potencia ativa",
-            )
-            raise e
-
-    async def get_rendimento_hoje(self):
-        
-        try:  # Procura o elemento da potencia ativa
-            father_element = await self.page.wait_for_selector(
-                RENDIMENTO_HOJE_FATHER_SELECTOR
-            )
-
-            child = await father_element.evaluate_handle(
-                f"el => el.closest('{RENDIMENTO_HOJE_CHILD_SELECTOR}')"
-            )
-            value_element = await child.query_selector(RENDIMENTO_HOJE_VALUE_ATTR)
-            value = await value_element.inner_text()
-            return "%s MWh" %value
-        except Exception as e:
-            logger.exception(e)
-            logger.warning(
-                "Nao consegui encontrar o valor da potencia ativa",
-            )
-            raise e
-    async def get_rendimento_total(self):
-        try:  # Procura o elemento da potencia ativa
-            father_element = await self.page.wait_for_selector(
-                RENDIMENTO_TOTAL_FATHER_SELECTOR
-            )
-
-            child = await father_element.evaluate_handle(
-                f"el => el.closest('{RENDIMENTO_TOTAL_CHILD_SELECTOR}')"
-            )
-            value_element = await child.query_selector(RENDIMENTO_TOTAL_VALUE_ATTR)
-            value = await value_element.inner_text()
-            return "%s MWh" %value
-        except Exception as e:
-            logger.exception(e)
-            logger.warning(
-                "Nao consegui encontrar o valor da potencia ativa",
-            )
-            raise e
+        name_container = await self.page.wait_for_selector(NAME_CONTAINER_SELECTOR)
+        return await name_container.get_attribute(NAME_ATTR)
 
     async def get_endereco(self):
         try:  # Procura o elemento da potencia ativa
             element = await self.page.wait_for_selector(
                 ENDERECO_SELECTOR
-            )
-            value = await element.inner_text()
-            return value
-        except Exception as e:
-            logger.exception(e)
-            logger.warning(
-                "Nao consegui encontrar o endereço da usina",
-            )
-            raise e
-
-    async def get_capacidade_total(self):
-        try:  # Procura o elemento da potencia ativa
-            element = await self.page.wait_for_selector(
-                CAPACIDADE_TOTAL_SELECTOR
             )
             value = await element.inner_text()
             return value
@@ -312,6 +233,96 @@ class FusionScrapper:
             )
             raise e
 
+    async def get_capacidade_total(self):
+        try:  # Procura o elemento da potencia ativa
+            element = await self.page.wait_for_selector(
+                CAPACIDADE_TOTAL_SELECTOR
+            )
+            value = await element.inner_text()
+            return value
+        except Exception as e:
+            logger.exception(e)
+            logger.warning(
+                "Nao consegui encontrar o endereço da usina",
+            )
+            raise e
+
+    async def get_potencia_ativa(self):
+        try:  # Procura o elemento da potencia ativa
+            father_element = await self.page.wait_for_selector(
+                POTENCIA_ATIVA_FATHER_SELECTOR
+            )
+
+            child = await father_element.evaluate_handle(
+                f"el => el.closest('{POTENCIA_ATIVA_CHILD_SELECTOR}')"
+            )
+            value_element = await child.query_selector(POTENCIA_ATIVA_VALUE_ATTR)
+            value = await value_element.inner_text()
+            return value
+        except Exception as e:
+            logger.exception(e)
+            logger.warning(
+                "Nao consegui encontrar o valor da potencia ativa",
+            )
+            raise e
+
+    async def get_potencia_reativa_saida(self):
+        try:  # Procura o elemento da potencia ativa
+            father_element = await self.page.wait_for_selector(
+                POTENCIA_REATIVA_FATHER_SELECTOR
+            )
+
+            child = await father_element.evaluate_handle(
+                f"el => el.closest('{POTENCIA_REATIVA_CHILD_SELECTOR}')"
+            )
+            value_element = await child.query_selector(POTENCIA_REATIVA_VALUE_ATTR)
+            value = await value_element.inner_text()
+            return value
+        except Exception as e:
+            logger.exception(e)
+            logger.warning(
+                "Nao consegui encontrar o valor da potencia ativa",
+            )
+            raise e
+
+    async def get_rendimento_hoje(self): 
+        try:  # Procura o elemento da potencia ativa
+            father_element = await self.page.wait_for_selector(
+                RENDIMENTO_HOJE_FATHER_SELECTOR
+            )
+
+            child = await father_element.evaluate_handle(
+                f"el => el.closest('{RENDIMENTO_HOJE_CHILD_SELECTOR}')"
+            )
+            value_element = await child.query_selector(RENDIMENTO_HOJE_VALUE_ATTR)
+            value = await value_element.inner_text()
+            return value
+        except Exception as e:
+            logger.exception(e)
+            logger.warning(
+                "Nao consegui encontrar o valor da potencia ativa",
+            )
+            raise e
+
+    async def get_rendimento_total(self):
+            try:  # Procura o elemento da potencia ativa
+                father_element = await self.page.wait_for_selector(
+                    RENDIMENTO_TOTAL_FATHER_SELECTOR
+                )
+
+                child = await father_element.evaluate_handle(
+                    f"el => el.closest('{RENDIMENTO_TOTAL_CHILD_SELECTOR}')"
+                )
+                value_element = await child.query_selector(RENDIMENTO_TOTAL_VALUE_ATTR)
+                value = await value_element.inner_text()
+                return "%s MWh" %value
+            except Exception as e:
+                logger.exception(e)
+                logger.warning(
+                    "Nao consegui encontrar o valor da potencia ativa",
+                )
+                raise e
+
     async def get_social_data(self):
         contributions = {}
         # Seleciona cada container individual de contribuição
@@ -331,7 +342,7 @@ class FusionScrapper:
             if title in mapping:
                 contributions[mapping[title]] = value
         return contributions
-    
+
     async def get_alarms_data(self):
         """Extrai os alarmes e os mapeia para chaves personalizadas."""
         alarms = {}
@@ -358,3 +369,19 @@ class FusionScrapper:
             alarms[chave] = valor
         
         return alarms
+
+def clean_value(value):
+    """Remove unidades de medida e formata o número corretamente."""
+    if value is None:
+        return None
+
+    # Remove espaços extras e caracteres não numéricos, exceto ponto e vírgula
+    value = value.strip().replace(",", ".")
+
+    # Extrai apenas números (inteiros ou decimais)
+    match = re.search(r"[-+]?\d*\.?\d+", value)
+    
+    if match:
+        return float(match.group())  # Retorna como número (float)
+    
+    return value  # Se não encontrar número, retorna original

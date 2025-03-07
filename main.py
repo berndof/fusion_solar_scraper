@@ -1,11 +1,10 @@
 from playwright.async_api import async_playwright
-from scrapper import FusionScrapper
+from scraper import Scraper
 import asyncio
-import json
 import os
-import subprocess
 import logging
 from logging.handlers import RotatingFileHandler
+from zabbix_utils import AsyncSender, ItemValue
 
 logging.basicConfig(
     level=logging.WARNING,  # Nível de log padrão
@@ -21,7 +20,7 @@ logger.setLevel(logging.DEBUG)
 async def main():
     
     async with async_playwright() as pw:
-        scrapper = FusionScrapper(pw)    
+        scrapper = Scraper(pw)    
 
         try:
             await scrapper.start()
@@ -30,34 +29,28 @@ async def main():
             
         except Exception as e:
             logger.exception(e)
-        # finally:
-        # await scrapper.stop()    
+        finally:
+            await scrapper.stop()    
 
 async def send_data_to_zabbix(data):
-    json_payload = json.dumps(data)
-    logger.debug(json_payload)
+    host = os.getenv("ZABBIX_HOST")  # Nome do host no Zabbix
 
-    cmd = [
-        "zabbix_sender",
-        "-z", os.getenv("ZABBIX_SERVER"),
-        "-s", f'\'{os.getenv("ZABBIX_HOST")}\'',
-        "-k", os.getenv("ZABBIX_DATA_KEY"),
-        "-p", os.getenv("ZABBIX_PORT"),
-        "-o", f"\'{json_payload}\'"
+    items = [
+        ItemValue(host, f"{key}", value)
+        for key, value in data.items()
+        if value is not None  # Evita enviar dados nulos
     ]
-    logger.debug(cmd)
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    sender = AsyncSender(server=os.getenv("ZABBIX_SERVER"), port=int(os.getenv("ZABBIX_PORT", 10051)))
 
-    if result.returncode != 0:
-        logger.error(result)
-        raise Exception("Erro ao enviar dados para o zabbix")
-
-    logger.info(result.stdout)
-    logger.info("Dados enviados com sucesso")
+    try:
+        response = await sender.send(items)
+        logger.info(f"Zabbix response: {response}")
+    except Exception as e:
+        logger.error(f"Erro ao enviar dados para o Zabbix: {e}")
 
 if __name__ == "__main__":
-    
+        
     cron_interval = int(os.getenv("CRON_INTERVAL_MINUTES", 5))
     # Define o timeout como (intervalo em segundos - margem de 10 segundos)
     timeout_value = (cron_interval * 60) - 10
