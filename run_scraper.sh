@@ -1,6 +1,7 @@
 #!/bin/bash
 
 WORKDIR=$(dirname "$0")
+LOGFILE="$WORKDIR/log_sh.txt"
 
 MAX_LOG_SIZE=1048576  # 1MB em bytes
 
