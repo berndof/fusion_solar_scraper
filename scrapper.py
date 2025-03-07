@@ -182,7 +182,7 @@ class FusionScrapper:
         social_data = await self.get_social_data()
         data.update(social_data)
 
-        data["alarmes"] = await self.get_alarms_data()
+        #data["alarmes"] = await self.get_alarms_data()
 
         
         return data
