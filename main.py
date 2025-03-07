@@ -43,7 +43,7 @@ async def send_data_to_zabbix(data):
         "-s", f"'{os.getenv("ZABBIX_HOST")}'",
         "-k", os.getenv("ZABBIX_DATA_KEY"),
         "-p", os.getenv("ZABBIX_PORT"),
-        "-o", f"'{json_payload}"
+        "-o", f"'{json_payload}'"
     ]
     logger.debug(cmd)
 
