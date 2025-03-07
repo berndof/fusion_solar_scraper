@@ -16,6 +16,7 @@ clean:
 	@uv run --env-file ${ENV_FILE} playwright uninstall all 
 	@uv run --env-file ${ENV_FILE} task.py --clean
 	@rm -rf  ./.venv
+	@rm -rf ${PWD}/browser_state.json
 
 clean_task:
 	@echo "Cleaning up cron job..."
