@@ -9,10 +9,10 @@ from logging.handlers import RotatingFileHandler
 
 logging.basicConfig(
     level=logging.WARNING,  # Nível de log padrão
-    format='%(asctime)s - %(levelname)s - %(message)s',  # Formato da mensagem
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         RotatingFileHandler(os.getenv("LOG_FILE_PATH"),maxBytes=int((os.getenv("MAX_LOG_SIZE_MB") * 1024 )), backupCount=3),
-        logging.StreamHandler()  # Exibe no terminal
+        logging.StreamHandler()
     ]
 )
 logger = logging.getLogger("MAIN")
