@@ -171,7 +171,7 @@ class Scraper:
     async def stop(self):
         await self.context.close()
         await self.browser.close()
-        sys.exit(1)
+        logger.info("Goodbye...")
 
     async def scrap(self):
         try:
