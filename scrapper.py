@@ -61,9 +61,11 @@ class FusionScrapper:
         try: #tenta injetar o estado do navegador salvo no ultimo login
             await self.inject_context_scenario()
 
-        except Exception as e:
+        except FileNotFoundError:
             await self.create_context_scenario()
-            logger.exception(f" exceção !!!! {e}")
+
+        except Exception as e:
+            logger.exception(f" exceção nova !!!! {e}")
 
     async def check_login(self):
         """Verifica se o login foi realizado
@@ -114,10 +116,6 @@ class FusionScrapper:
         # vai para a página de monitoramento
         await self.page.goto(os.getenv("MONITOR_PAGE_URL"))
         # Salva o estado do navegador
-        # Garante que o arquivo de estado do navegador seja criado corretamente
-        with open(os.path.join(Path.cwd(), "browser_state.json"), "w") as f:
-            f.write("{}")  # Salva um JSON vazio em vez de uma string vazia
-
         await self.page.context.storage_state(path=os.path.join(Path.cwd(), "browser_state.json"))
         logger.debug("Contexto criado com sucesso")
         
