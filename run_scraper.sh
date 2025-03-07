@@ -1,14 +1,20 @@
-#!/bin/bash
+MAX_LOG_SIZE=1048576  # 1MB em bytes
 
-WORKDIR="/home/berndof/Workspace/scraper"
-LOGFILE="${WORKDIR}/cron_debug.log"
-
+# Verifica se o log existe e seu tamanho
+if [ -f "$LOGFILE" ]; then
+    filesize=$(stat -c%s "$LOGFILE")
+    if [ "$filesize" -gt "$MAX_LOG_SIZE" ]; then
+        # Opcional: você pode mover o log para um backup e criar um novo
+        rm "$LOGFILE" 
+        touch "$LOGFILE"
+    fi
+fi
 
 echo "Executando script em $(date)" >> "$LOGFILE"
 cd "$WORKDIR" || { echo "Erro ao entrar no diretório" >> "$LOGFILE"; exit 1; }
 
-#activate venv
+# Ativa o ambiente virtual
 source "$WORKDIR/.venv/bin/activate"
-python -m uv run --env-file "$WORKDIR/.env" main.py
+python -m uv run --env-file "$WORKDIR/.env" main.py >> "$LOGFILE" 2>&1
 
 echo "Finalizado em $(date)" >> "$LOGFILE"
