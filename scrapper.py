@@ -114,16 +114,7 @@ class FusionScrapper:
         await self.page.goto(os.getenv("MONITOR_PAGE_URL"))
         # Salva o estado do navegador
 
-        # verifica se o arquivo existe antes de tentar salvar
-        if os.path.exists(os.path.join(Path.cwd(), "browser_state.json")):
-            #se existir exclui e cria um limpo novamente
-            os.remove(os.path.join(Path.cwd(), "browser_state.json"))
-
-        #cria o arquivo limpo
-        with open(os.path.join(Path.cwd(), "browser_state.json"), "w") as f:
-            f.write("")
-
-        await self.page.context.storage_state(path="browser_state.json")
+        await self.page.context.storage_state(path=os.path.join(Path.cwd(), "browser_state.json"))
         logger.debug("Contexto criado com sucesso")
         
         return 
