@@ -57,7 +57,6 @@ async def send_data_to_zabbix(data):
     logger.info("Dados enviados com sucesso")
 
 if __name__ == "__main__":
-    logger.debug("Hello")
     
     cron_interval = int(os.getenv("CRON_INTERVAL_MINUTES", 5))
     # Define o timeout como (intervalo em segundos - margem de 10 segundos)
