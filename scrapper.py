@@ -4,6 +4,7 @@ import base64
 import logging 
 from pathlib import Path
 
+
 logger = logging.getLogger("SCRAPER")
 logger.setLevel(logging.DEBUG)
 
@@ -113,6 +114,9 @@ class FusionScrapper:
         # vai para a página de monitoramento
         await self.page.goto(os.getenv("MONITOR_PAGE_URL"))
         # Salva o estado do navegador
+        # Garante que o arquivo de estado do navegador seja criado corretamente
+        with open(os.path.join(Path.cwd(), "browser_state.json"), "w") as f:
+            f.write("{}")  # Salva um JSON vazio em vez de uma string vazia
 
         await self.page.context.storage_state(path=os.path.join(Path.cwd(), "browser_state.json"))
         logger.debug("Contexto criado com sucesso")
