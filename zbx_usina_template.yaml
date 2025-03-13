@@ -1,0 +1,85 @@
+zabbix_export:
+  version: '7.0'
+  hosts:
+    - host: 'Usina Fusion'
+      name: 'Usina Fusion'
+      groups:
+        - name: Web
+      interfaces:
+        - interface_ref: if1
+      items:
+        - name: 'Alarme Advertência'
+          type: TRAP
+          key: alarme_advertencia
+          delay: '0'
+        - name: 'Alarme Importante'
+          type: TRAP
+          key: alarme_importante
+          delay: '0'
+          allowed_hosts: localhost
+        - name: 'Alarme Secundário'
+          type: TRAP
+          key: alarme_secundario
+          delay: '0'
+          allowed_hosts: localhost
+        - name: 'Alarme Sério'
+          type: TRAP
+          key: alarme_serio
+          delay: '0'
+          allowed_hosts: localhost
+        - name: 'Árvores Plantadas'
+          type: TRAP
+          key: arvores_plantadas
+          delay: '0'
+          value_type: FLOAT
+          allowed_hosts: localhost
+        - name: 'Carvão Poupado'
+          type: TRAP
+          key: carvao_poupado
+          delay: '0'
+          value_type: FLOAT
+          allowed_hosts: localhost
+          units: tonelada
+        - name: 'Co2 Evitado'
+          type: TRAP
+          key: co2_evitado
+          delay: '0'
+          value_type: FLOAT
+          allowed_hosts: localhost
+          units: tonelada
+        - name: 'Data da coleta'
+          type: TRAP
+          key: data_da_coleta
+          delay: '0'
+          value_type: TEXT
+          trends: '0'
+          allowed_hosts: localhost
+        - name: 'Potência Ativa'
+          type: TRAP
+          key: potencia_ativa
+          delay: '0'
+          value_type: FLOAT
+          allowed_hosts: localhost
+          units: kW
+        - name: 'Potência Reativa de Saída'
+          type: TRAP
+          key: potencia_reativa_saida
+          delay: '0'
+          value_type: FLOAT
+          allowed_hosts: localhost
+          units: kvar
+        - name: 'Rendimento Hoje'
+          type: TRAP
+          key: rendimento_hoje
+          delay: '0'
+          value_type: FLOAT
+          allowed_hosts: localhost
+          units: Wh
+        - name: 'Rendimento Total'
+          type: TRAP
+          key: rendimento_total
+          delay: '0'
+          value_type: FLOAT
+          allowed_hosts: localhost
+          units: MWh
+      inventory_mode: DISABLED

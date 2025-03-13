@@ -147,5 +147,7 @@ Para integrar esses dados ao Zabbix:
 1. **Criar um item no Zabbix** com a chave correspondente ao campo desejado do JSON.
 2. **Definir o tipo de informação** conforme o dado (por exemplo, numérico flutuante para valores com casas decimais).
 
+Exemplo de template do host `zbx_usina_template.yaml`
+
 
 
