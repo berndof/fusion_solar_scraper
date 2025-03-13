@@ -302,14 +302,10 @@ class Scraper:
 
             value = clean_value(raw_value)  # Usa sua função para converter para float
 
-            # Se a unidade for MWh, converter para kWh
-            if unit.strip() == "MWh":
-                value *= 1000
-
             if unit.strip() == "kWh":
-                value /= 1000
+                value *= 1000
             elif unit == "MWh":
-                value /= 1_000_000  # MWh → Wh
+                value *= 1_000_000  # MWh → Wh
 
             return value
                 
@@ -397,7 +393,6 @@ def clean_value(value):
 
     # Extrai apenas números (inteiros ou decimais)
     match = re.search(r"[-+]?\d*\.?\d+", value)
-    
     if match:
         return float(match.group())  # Retorna como número (float)
     
