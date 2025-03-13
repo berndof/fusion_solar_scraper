@@ -1,12 +1,10 @@
 import logging
 import os
 import base64
-import sys
 import re
 
 from pathlib import Path
 from datetime import datetime
-from exceptions import CANT_VALIDATE_LOGIN_EXCEPTION
 
 logger = logging.getLogger("SCRAPER")
 logger.setLevel(logging.DEBUG)
@@ -62,7 +60,9 @@ class Scraper:
 
         except FileNotFoundError:
             await self.create_context_scenario()
-
+        except TimeoutError:
+            await self.create_context_scenario()
+    
         except Exception as e:
             logger.exception(f" exceção nova !!!! {e}")
 
@@ -79,7 +79,7 @@ class Scraper:
             logger.info("Logado no sistema")
         except Exception as e:
             logging.exception(e)
-            raise CANT_VALIDATE_LOGIN_EXCEPTION
+            raise TimeoutError
 
     async def inject_context_scenario(self):
 
@@ -183,7 +183,7 @@ class Scraper:
                 "data_da_coleta": datetime.now().strftime("%d-%m-%Y %H:%M:%S"), #
                 "potencia_ativa": clean_value(await self.get_potencia_ativa()), #
                 "potencia_reativa_saida": clean_value(await self.get_potencia_reativa_saida()), #
-                "rendimento_hoje": clean_value(await self.get_rendimento_hoje()),
+                "rendimento_hoje": await self.get_rendimento_hoje(),
                 "rendimento_total": clean_value(await self.get_rendimento_total()),
             }
 
@@ -295,14 +295,26 @@ class Scraper:
                 f"el => el.closest('{RENDIMENTO_HOJE_CHILD_SELECTOR}')"
             )
             value_element = await child.query_selector(RENDIMENTO_HOJE_VALUE_ATTR)
-            value = await value_element.inner_text()
+            unit_element = await child.query_selector(".unit")
+
+            raw_value = await value_element.inner_text()
+            unit = await unit_element.inner_text() if unit_element else "kWh"  # Padrão kWh
+
+            value = clean_value(raw_value)  # Usa sua função para converter para float
+
+            # Se a unidade for MWh, converter para kWh
+            if unit.strip() == "MWh":
+                value *= 1000
+
             return value
+                
         except Exception as e:
             logger.exception(e)
             logger.warning(
                 "Nao consegui encontrar o valor da potencia ativa",
             )
             raise e
+        
 
     async def get_rendimento_total(self):
             try:  # Procura o elemento da potencia ativa
@@ -315,7 +327,7 @@ class Scraper:
                 )
                 value_element = await child.query_selector(RENDIMENTO_TOTAL_VALUE_ATTR)
                 value = await value_element.inner_text()
-                return "%s MWh" %value
+                return value
             except Exception as e:
                 logger.exception(e)
                 logger.warning(
