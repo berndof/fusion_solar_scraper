@@ -307,9 +307,9 @@ class Scraper:
                 value *= 1000
 
             if unit.strip() == "kWh":
-                value *= 1000
+                value /= 1000
             elif unit == "MWh":
-                value *= 1_000_000  # MWh → Wh
+                value /= 1_000_000  # MWh → Wh
 
             return value
                 
