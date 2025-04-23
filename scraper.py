@@ -17,11 +17,11 @@ CAPTCHA_INPUT_SELECTOR = "#verification input"
 NAME_CONTAINER_SELECTOR = ".nco-monitor-header-name-container .ant-typography"  # CSS
 NAME_ATTR = "title"
 
-POTENCIA_ATIVA_FATHER_SELECTOR = "span.name:text('Potência ativa')"
+POTENCIA_ATIVA_FATHER_SELECTOR = "span.name:text('Potência reativa da matriz')"
 POTENCIA_ATIVA_CHILD_SELECTOR = ".nco-monitor-kpi-item"
 POTENCIA_ATIVA_VALUE_ATTR = ".value"
 
-POTENCIA_REATIVA_FATHER_SELECTOR = "span.name:text('Potência reativa de saída')"
+POTENCIA_REATIVA_FATHER_SELECTOR = "span.name:text('Potência reativa da matriz')"
 POTENCIA_REATIVA_CHILD_SELECTOR = ".nco-monitor-kpi-item"
 POTENCIA_REATIVA_VALUE_ATTR = ".value"
 
