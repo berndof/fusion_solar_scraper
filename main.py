@@ -1,6 +1,8 @@
+from zabbix_utils.types import TrapperResponse
+
+
 from ast import pattern
 from csv import Error
-from zabbix_utils.types import TrapperResponse
 from playwright.async_api._generated import (
     APIResponse,
     Browser,
@@ -18,8 +20,8 @@ from zabbix_utils import AsyncSender, ItemValue
 
 
 URL = "https://la5.fusionsolar.huawei.com/"
-USERNAME: str = os.environ.get("USERNAME", "")
-PASSWORD: str = os.environ.get("PASSWORD", "")
+USERNAME: str | None = os.environ.get("USERNAME")
+PASSWORD: str | None = os.environ.get("PASSWORD")
 ENDPOINTS: dict[str, str] = {
     "social": "https://la5.fusionsolar.huawei.com/rest/pvms/web/station/v1/station/social-contribution?dn={dn}&clientTime={ts}&timeZone=-3&_={ts}",
     "alarms": "https://la5.fusionsolar.huawei.com/rest/pvms/fm/v1/statistic?stationDn={dn}&_={ts}",
@@ -55,6 +57,9 @@ async def main():
         context: BrowserContext = await browser.new_context()
         page: Page = await context.new_page()
 
+        # TODO maybe
+        # try load context, else verify redirect and login
+
         await page.goto(url=URL)
 
         # Preencha usuário/senha
@@ -63,10 +68,15 @@ async def main():
             await page.fill(selector="#password > input", value=PASSWORD)
         await page.click(selector="#submitDataverify")
 
+        stl_timeout = 5000  # ms
+
         # Aguarda a resposta da lista de estações
+        # faz tambem a validação do login mas as vezes da timeout
+        # "session": "https://la5.fusionsolar.huawei.com/rest/dpcloud/auth/v1/is-session-alive",
         async with page.expect_response(
             url_or_predicate=lambda response: "/rest/pvms/web/station/v1/station/station-list"
-            in response.url
+            in response.url,
+            timeout=stl_timeout,
         ) as st:
             ...
 
@@ -77,15 +87,21 @@ async def main():
         # adaptar para multiplas estações
         list_items = station_json.get("data", {}).get("list", [])
         if not list_items:
+            print("Nenhuma estação encontrada para o usuário.")
             await browser.close()
             return
 
         station_dn = list_items[0]["dn"]
         raw_data: dict[str, Any] = await collect_for_station(page, station_dn)
         data_to_send: dict[str, Any] = normalize_for_zabbix(raw_data)
-        print(data_to_send)
+        # print(data_to_send)
         # await context.storage_state(path="states/state.json")
         await browser.close()
+        # print()
+        zabbix_response: TrapperResponse = await send_data_to_zabbix(data=data_to_send)
+        # log zabbix response
+
+        return
 
 
 def normalize_for_zabbix(raw_data: dict[str, Any]) -> dict[str, Any]:
@@ -161,7 +177,7 @@ async def send_data_to_zabbix(data: dict[str, Any]):
     )
 
     response: TrapperResponse = await sender.send(items)
-    print(response)
+    return response
 
 
 if __name__ == "__main__":
