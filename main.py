@@ -66,7 +66,6 @@ async def main():
         if USERNAME and PASSWORD:
             await page.fill(selector="#username > input", value=USERNAME)
             await page.fill(selector="#password > input", value=PASSWORD)
-        await page.click(selector="#submitDataverify")
 
         stl_timeout = 5000  # ms
 
@@ -78,7 +77,7 @@ async def main():
             in response.url,
             timeout=stl_timeout,
         ) as st:
-            ...
+            await page.click(selector="#submitDataverify")
 
         station_response: Response = await st.value
         station_json = await station_response.json()
