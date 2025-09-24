@@ -12,5 +12,7 @@ wheels/
 browser_state.json
 future/
 browsers/
-log.*
+logs/
 screenshots/
+browsers/
+.vscode/

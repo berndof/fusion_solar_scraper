@@ -18,11 +18,16 @@ from typing import Any
 import json
 from datetime import datetime, timezone
 from zabbix_utils import AsyncSender, ItemValue
+from dotenv import load_dotenv
 
+load_dotenv()
 
 URL = "https://la5.fusionsolar.huawei.com/"
 USERNAME: str | None = os.environ.get("USERNAME")
 PASSWORD: str | None = os.environ.get("PASSWORD")
+if not USERNAME and PASSWORD:
+    raise Exception("Verifique o .env")
+
 ENDPOINTS: dict[str, str] = {
     "social": "https://la5.fusionsolar.huawei.com/rest/pvms/web/station/v1/station/social-contribution?dn={dn}&clientTime={ts}&timeZone=-3&_={ts}",
     "alarms": "https://la5.fusionsolar.huawei.com/rest/pvms/fm/v1/statistic?stationDn={dn}&_={ts}",
@@ -68,7 +73,7 @@ async def main():
             await page.fill(selector="#username > input", value=USERNAME)
             await page.fill(selector="#password > input", value=PASSWORD)
 
-        stl_timeout = 5000  # ms
+        stl_timeout = 50000  # ms
 
         # Aguarda a resposta da lista de estações
         # faz tambem a validação do login mas as vezes da timeout
@@ -95,7 +100,7 @@ async def main():
             raise
 
         station_json = await station_response.json()
-        await context.storage_state(path="states/state.json")
+        # await context.storage_state(path="states/state.json")
 
         # adaptar para multiplas estações
         list_items = station_json.get("data", {}).get("list", [])
@@ -107,41 +112,46 @@ async def main():
         station_dn = list_items[0]["dn"]
         raw_data: dict[str, Any] = await collect_for_station(page, station_dn)
         data_to_send: dict[str, Any] = normalize_for_zabbix(raw_data)
-        # print(data_to_send)
         # await context.storage_state(path="states/state.json")
         await browser.close()
-        # print()
         zabbix_response: TrapperResponse = await send_data_to_zabbix(data=data_to_send)
         # log zabbix response
-
+        print(zabbix_response)
         return
 
 
 def normalize_for_zabbix(raw_data: dict[str, Any]) -> dict[str, Any]:
-    now: str = datetime.now().strftime(format="%d-%m-%Y %H:%M:%S")
+    # now: str = datetime.now().strftime(format="%d-%m-%Y %H:%M:%S")
 
     # --- Social ---
     social = raw_data.get("social", {}).get("data", {})
-    carvao_poupado: int = int(social.get("standardCoalSavings", 0))  # kg
-    co2_evitado: int = int(social.get("co2Reduction", 0))  # kg
+    carvao_poupado: float = round(
+        social.get("standardCoalSavings", 0) / 1000, 2
+    )  # kg -> ton 0.2f
+    co2_evitado: float = round(
+        social.get("co2Reduction", 0) / 1000, 2
+    )  # kg -> ton 0.2f
     arvores_plantadas: int = int(social.get("equivalentTreePlanting", 0))
 
     # --- Stats ---
     stats = raw_data.get("stats", {}).get("data", [])
     potencia_ativa = 0.0  # kW
     potencia_reativa = 0.0  # kvar
-    rendimento_hoje = 0.0  # kWh
-    rendimento_total = 0.0  # kWh
+    # talvez precise se atentar as unidades aqui ainda
+    # TODO
+    rendimento_hoje = 0.0  #
+    rendimento_total = 0.0  #
 
     for item in stats:
         if item["id"] == 10012:  # Potência ativa
-            potencia_ativa = float(item["value"])
+            potencia_ativa = round(float(item["value"]) * 1000 * 1000, 2)
         elif item["id"] == 10013:  # Potência reativa
             potencia_reativa = float(item["value"])
         elif item["id"] == 10016:  # Rendimento hoje
-            rendimento_hoje = float(item["value"])
+            rendimento_hoje = round(float(item["value"]) * 1000, 2)  # kwh
+
         elif item["id"] == 10015:  # Rendimento total
-            rendimento_total = float(item["value"])
+            rendimento_total = round(float(item["value"]) * 1000, 2)  # kwh
 
     # --- Alarms ---
     alarms = raw_data.get("alarms", {}).get("data", [])
@@ -161,7 +171,6 @@ def normalize_for_zabbix(raw_data: dict[str, Any]) -> dict[str, Any]:
             alarme_advert: int = int(a["value"])
 
     return {
-        "data_da_coleta": now,
         "potencia_ativa": potencia_ativa,
         "potencia_reativa_saida": potencia_reativa,
         "rendimento_hoje": rendimento_hoje,
@@ -178,6 +187,11 @@ def normalize_for_zabbix(raw_data: dict[str, Any]) -> dict[str, Any]:
 
 async def send_data_to_zabbix(data: dict[str, Any]):
     host: str = os.environ.get("ZABBIX_HOST", "")
+
+    if not host:
+        raise Exception("check .env")
+
+    print(data)
 
     items: list[ItemValue] = [
         ItemValue(host=host, key=f"{key}", value=value)
