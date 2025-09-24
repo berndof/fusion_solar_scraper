@@ -10,6 +10,7 @@ from playwright.async_api._generated import (
     Page,
     Response,
 )
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api import async_playwright
 import asyncio
 import os
@@ -72,14 +73,27 @@ async def main():
         # Aguarda a resposta da lista de estações
         # faz tambem a validação do login mas as vezes da timeout
         # "session": "https://la5.fusionsolar.huawei.com/rest/dpcloud/auth/v1/is-session-alive",
-        async with page.expect_response(
-            url_or_predicate=lambda response: "/rest/pvms/web/station/v1/station/station-list"
-            in response.url,
-            timeout=stl_timeout,
-        ) as st:
-            await page.click(selector="#submitDataverify")
 
-        station_response: Response = await st.value
+        try:
+            async with page.expect_response(
+                url_or_predicate=lambda response: "/rest/pvms/web/station/v1/station/station-list"
+                in response.url,
+                timeout=stl_timeout,
+            ) as st:
+                await page.click(selector="#submitDataverify")
+            station_response = await st.value
+
+        except PlaywrightTimeoutError:
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            screenshot_file = f"timeout_{ts}.png"
+            os.makedirs("screenshots", exist_ok=True)
+            await page.screenshot(path=screenshot_file, full_page=True)
+            # logger.error(
+            #    "Timeout esperando /station-list, screenshot salvo em %s",
+            #    screenshot_file,
+            # )
+            raise
+
         station_json = await station_response.json()
         await context.storage_state(path="states/state.json")
 
