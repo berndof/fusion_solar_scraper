@@ -16,3 +16,4 @@ logs/
 screenshots/
 browsers/
 .vscode/
+uv.lock

@@ -1,6 +1,4 @@
 from zabbix_utils.types import TrapperResponse
-
-
 from ast import pattern
 from csv import Error
 from playwright.async_api._generated import (
@@ -21,6 +19,7 @@ from zabbix_utils import AsyncSender, ItemValue
 from dotenv import load_dotenv
 
 load_dotenv()
+from logs import collector_logger  # noqa: E402
 
 URL = "https://la5.fusionsolar.huawei.com/"
 USERNAME: str | None = os.environ.get("USERNAME")
@@ -45,14 +44,14 @@ async def collect_for_station(page: Page, station_dn: str) -> dict[str, Any]:
         try:
             resp: APIResponse = await page.request.get(url)
             if resp.ok:
-                try:
-                    results[key] = await resp.json()
-                except Exception:
-                    results[key] = await resp.text()
+                results[key] = await resp.json()
+                collector_logger.debug(msg=f"Collected data: {key}")
             else:
                 results[key] = {"error": resp.status}
+                collector_logger.warning(msg=f"resp status for {key}: {resp.status}")
         except Exception as e:
             results[key] = {"error": str(e)}
+            collector_logger.error(msg="e")
 
     return results
 
@@ -89,15 +88,17 @@ async def main():
             station_response = await st.value
 
         except PlaywrightTimeoutError:
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            screenshot_file = f"timeout_{ts}.png"
-            os.makedirs("screenshots", exist_ok=True)
-            await page.screenshot(path=screenshot_file, full_page=True)
+            ts: str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            # screenshot_file = f"timeout_{ts}.png"
+            # os.makedirs("screenshots", exist_ok=True)
+            # await page.screenshot(path=screenshot_file, full_page=True)
             # logger.error(
             #    "Timeout esperando /station-list, screenshot salvo em %s",
             #    screenshot_file,
             # )
-            raise
+            msg: str = f"{ts}: Timeout no Login pra ficar esperto"
+            collector_logger.error(msg)
+            raise Error(f"{ts}: Timeout no Login pra ficar esperto")
 
         station_json = await station_response.json()
         # await context.storage_state(path="states/state.json")
@@ -105,7 +106,7 @@ async def main():
         # adaptar para multiplas estações
         list_items = station_json.get("data", {}).get("list", [])
         if not list_items:
-            print("Nenhuma estação encontrada para o usuário.")
+            collector_logger.error(msg="Nenhuma estação encontrada para o usuário.")
             await browser.close()
             return
 
@@ -115,8 +116,7 @@ async def main():
         # await context.storage_state(path="states/state.json")
         await browser.close()
         zabbix_response: TrapperResponse = await send_data_to_zabbix(data=data_to_send)
-        # log zabbix response
-        print(zabbix_response)
+        collector_logger.info(msg=zabbix_response)
         return
 
 
@@ -135,12 +135,12 @@ def normalize_for_zabbix(raw_data: dict[str, Any]) -> dict[str, Any]:
 
     # --- Stats ---
     stats = raw_data.get("stats", {}).get("data", [])
-    potencia_ativa = 0.0  # kW
-    potencia_reativa = 0.0  # kvar
+    potencia_ativa: float = 0.0  # kW
+    potencia_reativa: float = 0.0  # kvar
     # talvez precise se atentar as unidades aqui ainda
     # TODO
-    rendimento_hoje = 0.0  #
-    rendimento_total = 0.0  #
+    rendimento_hoje: float = 0.0  #
+    rendimento_total: float = 0.0  #
 
     for item in stats:
         if item["id"] == 10012:  # Potência ativa
@@ -191,13 +191,13 @@ async def send_data_to_zabbix(data: dict[str, Any]):
     if not host:
         raise Exception("check .env")
 
-    print(data)
+    items: list[ItemValue] = []
+    for key, value in data.items():
+        if value is None:
+            collector_logger.warning(f"Valor None para chave '{key}' não será enviado")
+            continue
 
-    items: list[ItemValue] = [
-        ItemValue(host=host, key=f"{key}", value=value)
-        for key, value in data.items()
-        if value
-    ]
+        items.append(ItemValue(host=host, key=f"{key}", value=value))
 
     sender: AsyncSender = AsyncSender(
         server=os.getenv("ZABBIX_SERVER"), port=int(os.getenv("ZABBIX_PORT", 10051))

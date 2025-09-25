@@ -8,15 +8,7 @@ O **fusion_solar_scrapper** é um projeto desenvolvido para coletar dados da pla
 
 O Zabbix Sender é uma ferramenta utilizada para enviar dados personalizados ao servidor Zabbix. Para instalá-lo:
 
-1. **Adicionar o repositório do Zabbix**:
-
-   ```bash
-   wget https://repo.zabbix.com/zabbix/7.2/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_7.2+ubuntu24.04_all.deb
-   sudo dpkg -i zabbix-release_latest_7.2+ubuntu24.04_all.deb
-   sudo apt update
-   ```
-
-2. **Instalar o Zabbix Sender**:
+   talvez seja preciso Adicionar o repositório do Zabbix;
 
    ```bash
    sudo apt install zabbix-sender
@@ -26,37 +18,6 @@ O Zabbix Sender é uma ferramenta utilizada para enviar dados personalizados ao 
 
 O UV é um gerenciador de pacotes e ambientes Python que facilita a gestão de dependências. Para instalá-lo:
 https://docs.astral.sh/uv/
-
-1. **Instalar o `curl`** (se ainda não estiver instalado):
-
-   ```bash
-   sudo apt install curl
-   ```
-
-2. **Instalar o UV**:
-
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-
-   Após a instalação, adicione o UV ao seu `PATH` conforme as instruções exibidas no terminal.
-
-## 4. Clonagem do Repositório
-
-Para obter o código-fonte do projeto:
-
-1. **Instalar o Git** (se ainda não estiver instalado):
-
-   ```bash
-   sudo apt install git
-   ```
-
-2. **Clonar o repositório**:
-
-   ```bash
-   git clone https://github.com/berndof/fusion_solar_scrapper.git
-   cd fusion_solar_scrapper/
-   ```
 
 ## 5. Configuração do Ambiente
 
@@ -75,17 +36,9 @@ Para obter o código-fonte do projeto:
    make install
    ```
 
-   Este comando configura o ambiente virtual e instala todas as dependências necessárias.
+   Este comando configura o ambiente virtual e instala as dependencias do python
 
 ## 6. Execução e Testes
-
-1. **Executar testes iniciais**:
-
-   ```bash
-   make test
-   ```
-
-   Este comando inicia o scraper e verifica se ele consegue criar uma sessão no Fusion Solar e salvar o estado do navegador. Os logs das execuções são registrados no arquivo `log.txt` no diretório do projeto.
 
 2. **Configurar execução periódica com o Crontab**:
 
@@ -107,7 +60,7 @@ Para obter o código-fonte do projeto:
    */5 * * * * /bin/bash /caminho/para/fusion_solar_scrapper/run_scraper.sh # fusion_solar_scrapper
    ```
 
-   Os logs das execuções recentes do script estarão em `log_sh.txt`, enquanto os logs detalhados do scraper estarão em `log.txt`.
+   Os logs das execuções recentes do script estarão em `crontabtask.log`, enquanto os logs do scraper estarão em `collector.log`.
 
 3. **Remover a tarefa agendada**:
 
@@ -125,15 +78,15 @@ Para obter o código-fonte do projeto:
 
 O scraper retorna os dados coletados no seguinte formato JSON:
 
+#TODO corrigir isso aqui com os formatos
 ```json
 {
-   "data_da_coleta": "13-03-2025 14:17:13",
    "potencia_ativa": 105.377,
-   "potencia_reativa_saida": -0.028,
+   "potencia_reativa_saida": float kvar,
    "rendimento_hoje": 1500000000.0,
    "rendimento_total": 412.91,
-   "carvao_poupado": 366.4,
-   "co2_evitado": 435.1,
+   "carvao_poupado": float tonelada
+   "co2_evitado": float tonelada
    "arvores_plantadas": 595.0,
    "alarme_serio": 0,
    "alarme_importante": 1,
