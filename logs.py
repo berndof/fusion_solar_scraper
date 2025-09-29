@@ -9,7 +9,7 @@ import os
 os.makedirs(name="log", exist_ok=True)
 LOG_LEVEL = getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper())
 
-LOG_FILE = "log/collector.log"
+LOG_FILE = "logs/collector.log"
 MAX_LOG_SIZE = 5 * 1024 * 1024  # 5 MB
 BACKUP_COUNT = 5
 
