@@ -144,7 +144,7 @@ def normalize_for_zabbix(raw_data: dict[str, Any]) -> dict[str, Any]:
 
     for item in stats:
         if item["id"] == 10012:  # Potência ativa
-            potencia_ativa = round(float(item["value"]) * 1000 * 1000, 2)
+            potencia_ativa = round(float(item["value"]) * 1000, 2)
         elif item["id"] == 10013:  # Potência reativa
             potencia_reativa = float(item["value"])
         elif item["id"] == 10016:  # Rendimento hoje
