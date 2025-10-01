@@ -1,19 +1,70 @@
-# Python-generated files
+# Bytecode / cache
 __pycache__/
-*.py[oc]
+*.py[cod]
+*$py.class
+
+# Build / distribuição
 build/
 dist/
 wheels/
-*.egg-info
-.env
+*.egg-info/
+.eggs/
+*.manifest
+*.spec
 
-# Virtual environments
-.venv
-browser_state.json
-future/
-browsers/
+# Virtualenv
+.venv/
+env/
+venv/
+ENV/
+
+# Configuração local / secrets
+.env
+.env.*
+*.env
+*.ini
+*.cfg
+*.toml
+
+# Logs / estado
+*.log
 logs/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Testes / coverage
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+.mypy_cache/
+.dmypy.json
+.pyre/
+.pytype/
+
+# Notebooks
+.ipynb_checkpoints
+
+# Docker / containers
+.dockerignore
+docker-compose.override.yml
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Browsers / automação
+browser_state.json
 screenshots/
 browsers/
-.vscode/
+future/
+
+# Outras tralhas
+.DS_Store
+Thumbs.db
 uv.lock
