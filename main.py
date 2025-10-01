@@ -1,6 +1,7 @@
 import asyncio
+import json
 import os
-from csv import Error
+import sys
 from datetime import datetime, timezone
 from typing import Any
 
@@ -19,16 +20,16 @@ from zabbix_utils.types import TrapperResponse
 load_dotenv()
 from logs import collector_logger  # noqa: E402
 
-URL = "https://la5.fusionsolar.huawei.com/"
+URL: str | None = os.environ.get("FUSION_URL")
 USERNAME: str | None = os.environ.get("USERNAME")
 PASSWORD: str | None = os.environ.get("PASSWORD")
-if not USERNAME and PASSWORD:
+if not USERNAME and PASSWORD and URL:
     raise Exception("Verifique o .env")
 
 ENDPOINTS: dict[str, str] = {
-    "social": "https://la5.fusionsolar.huawei.com/rest/pvms/web/station/v1/station/social-contribution?dn={dn}&clientTime={ts}&timeZone=-3&_={ts}",
-    "alarms": "https://la5.fusionsolar.huawei.com/rest/pvms/fm/v1/statistic?stationDn={dn}&_={ts}",
-    "stats": "https://la5.fusionsolar.huawei.com/rest/pvms/web/business/v1/stationinfo/station-statistical-information?stationDn={dn}&sceneType=2&_={ts}",
+    "social": "/rest/pvms/web/station/v1/station/social-contribution?dn={dn}&clientTime={ts}&timeZone=-3&_={ts}",
+    "alarms": "/rest/pvms/fm/v1/statistic?stationDn={dn}&_={ts}",
+    "stats": "/rest/pvms/web/business/v1/stationinfo/station-statistical-information?stationDn={dn}&sceneType=2&_={ts}",
     # "session": "https://la5.fusionsolar.huawei.com/rest/dpcloud/auth/v1/is-session-alive",
 }
 
@@ -37,8 +38,9 @@ async def collect_for_station(page: Page, station_dn: str) -> dict[str, Any]:
     ts: int = int(datetime.now(timezone.utc).timestamp() * 1000)
     results: dict[str, Any] = {}
 
-    for key, url_template in ENDPOINTS.items():
-        url: str = url_template.format(dn=station_dn, ts=ts)
+    for key, path in ENDPOINTS.items():
+        url: str = f"{URL}{path}".format(dn=station_dn, ts=ts)
+
         try:
             resp: APIResponse = await page.request.get(url)
             if resp.ok:
@@ -63,7 +65,7 @@ async def main():
         # TODO maybe
         # try load context, else verify redirect and login
 
-        await page.goto(url=URL)
+        await page.goto(url=URL)  # pyright: ignore[reportArgumentType]
 
         # Preencha usuário/senha
         if USERNAME and PASSWORD:
@@ -96,7 +98,7 @@ async def main():
             # )
             msg: str = f"{ts}: Timeout no Login pra ficar esperto"
             collector_logger.error(msg)
-            raise Error(f"{ts}: Timeout no Login pra ficar esperto")
+            raise Exception(f"{ts}: Timeout no Login pra ficar esperto")
 
         station_json = await station_response.json()
         # await context.storage_state(path="states/state.json")
@@ -111,11 +113,21 @@ async def main():
         station_dn = list_items[0]["dn"]
         raw_data: dict[str, Any] = await collect_for_station(page, station_dn)
         data_to_send: dict[str, Any] = normalize_for_zabbix(raw_data)
-        # await context.storage_state(path="states/state.json")
         await browser.close()
-        zabbix_response: TrapperResponse = await send_data_to_zabbix(data=data_to_send)
-        collector_logger.info(msg=zabbix_response)
-        collector_logger.debug(msg=f"collected data: {data_to_send}")
+
+        collector_logger.debug(
+            msg="Normalized data:\n"
+            + json.dumps(data_to_send, ensure_ascii=False, indent=2)
+        )
+
+        try:
+            zabbix_response: TrapperResponse = await send_data_to_zabbix(
+                data=data_to_send
+            )
+            collector_logger.info(msg=zabbix_response)
+        except Exception as e:
+            collector_logger.error(msg=e)
+            sys.exit(1)
         return
 
 
