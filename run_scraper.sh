@@ -28,7 +28,9 @@ fi
     echo "Executando script em $(date)"
     cd "$SCRIPT_DIR" || { echo "Erro ao entrar no diretório $SCRIPT_DIR"; exit 1; }
 
-    uv run main.py
+    source "./.venv/bin/activate"
+    python -m uv run ./main.py
+
     echo "Finalizado em $(date)"
     echo "----------------------------"
 } >> "$LOGFILE" 2>&1

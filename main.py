@@ -1,22 +1,20 @@
-from zabbix_utils.types import TrapperResponse
-from ast import pattern
+import asyncio
+import os
 from csv import Error
+from datetime import datetime, timezone
+from typing import Any
+
+from dotenv import load_dotenv
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+from playwright.async_api import async_playwright
 from playwright.async_api._generated import (
     APIResponse,
     Browser,
     BrowserContext,
     Page,
-    Response,
 )
-from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-from playwright.async_api import async_playwright
-import asyncio
-import os
-from typing import Any
-import json
-from datetime import datetime, timezone
 from zabbix_utils import AsyncSender, ItemValue
-from dotenv import load_dotenv
+from zabbix_utils.types import TrapperResponse
 
 load_dotenv()
 from logs import collector_logger  # noqa: E402
@@ -117,6 +115,7 @@ async def main():
         await browser.close()
         zabbix_response: TrapperResponse = await send_data_to_zabbix(data=data_to_send)
         collector_logger.info(msg=zabbix_response)
+        collector_logger.debug(msg=f"collected data: {data_to_send}")
         return
 
 

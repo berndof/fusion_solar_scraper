@@ -1,12 +1,13 @@
 __all__ = ["collector_logger"]
 
-from typing import TextIO
 import logging
+import os
 from logging import Formatter, Logger, StreamHandler
 from logging.handlers import RotatingFileHandler
-import os
+from typing import TextIO
 
-os.makedirs(name="log", exist_ok=True)
+LOG_DIR = "logs/"
+os.makedirs(name=LOG_DIR, exist_ok=True)
 LOG_LEVEL = getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper())
 
 LOG_FILE = "logs/collector.log"
